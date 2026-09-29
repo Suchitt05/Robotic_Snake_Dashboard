@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SERPENT-X | Disaster Rescue Robotic Snake Tactical Dashboard</title>
+    <meta name="description" content="Tactical Interfacing Dashboard for 6-Segment Disaster Rescue Robotic Snake with Life Support & Multi-Sensor Telemetry.">
+    <!-- Google Fonts for Tactical Sci-Fi UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="tactical-body">
+    <!-- Top HUD Navigation Header -->
+    <header class="hud-header">
+        <div class="brand-section">
+            <div class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path>
+                    <path d="M8 12h8"></path>
+                    <path d="M12 8v8"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </div>
+            <div class="brand-titles">
+                <h1>SERPENT-X <span class="badge-v">v4.2 PRO</span></h1>
+                <p class="subtitle">URBAN SEARCH & RESCUE ROBOTIC SNAKE GROUND COMMAND</p>
+            </div>
+        </div>
+
+        <div class="header-status-group">
+            <div class="status-indicator online" id="connectionStatus">
+                <span class="pulse-dot"></span>
+                <span class="status-text">TETHER ONLINE</span>
+            </div>
+            
+            <div class="header-telemetry-pill">
+                <span class="pill-label">SIGNAL</span>
+                <span class="pill-value cyan" id="hdrSignal">-42 dBm</span>
+            </div>
+
+            <div class="header-telemetry-pill">
+                <span class="pill-label">TETHER VOLT</span>
+                <span class="pill-value green" id="hdrVoltage">48.2 V</span>
+            </div>
+
+            <div class="header-telemetry-pill">
+                <span class="pill-label">PAYOUT</span>
+                <span class="pill-value gold" id="hdrPayout">24.5 m</span>
+            </div>
+
+            <div class="scenario-selector-wrap">
+                <label for="scenarioSelect">SIMULATOR PRESET:</label>
+                <select id="scenarioSelect" class="hud-select">
+                    <option value="normal">Normal Disaster Search</option>
+                    <option value="victim_found">Victim Located - Deploy Life Support</option>
+                    <option value="gas_hazard">CRITICAL: Toxic Gas Leak Detected</option>
+                    <option value="tether_strain">WARNING: Tether Tension High</option>
+                    <option value="food_clog">ALERT: Liquid Food Line Clogged</option>
+                </select>
+            </div>
+
+            <div class="header-actions">
+                <button id="btnAudioToggle" class="hud-btn btn-icon" title="Toggle Sound FX">
+                    <span id="audioIcon">🔊</span>
+                </button>
+                <button id="btnExportLog" class="hud-btn btn-sm">EXPORT LOGS</button>
+                <button id="btnEstop" class="hud-btn btn-danger btn-estop">E-STOP</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert Notification Banner (Hidden by default) -->
+    <div id="alertBanner" class="alert-banner hidden">
+        <span class="alert-icon">⚠️</span>
+        <span id="alertMessage" class="alert-text">HAZARD DETECTED: HIGH CARBON MONOXIDE LEVEL (450 PPM)</span>
+        <button id="btnDismissAlert" class="alert-close">&times;</button>
+    </div>
+
+    <!-- Main Grid Dashboard Layout -->
+    <main class="hud-grid-container">
+        
+        <!-- SECTION 1: Camera HUD & Optics Control -->
+        <section class="hud-panel panel-camera">
+            <div class="panel-header">
+                <h2><span class="icon">📷</span> FRONT CAMERA & OPTICS HUD</h2>
+                <div class="cam-badges">
+                    <span class="tag-badge">1080P @ 60FPS</span>
+                    <span class="tag-badge active" id="camModeBadge">VISUAL LIGHT</span>
+                </div>
+            </div>
+            <div class="panel-body flex-col">
+                <div class="camera-canvas-wrapper">
+                    <canvas id="cameraCanvas" width="640" height="380"></canvas>
+                    <div class="hud-overlay-graphics">
+                        <div class="corner-bracket top-left"></div>
+                        <div class="corner-bracket top-right"></div>
+                        <div class="corner-bracket bottom-left"></div>
+                        <div class="corner-bracket bottom-right"></div>
+                        <div class="center-crosshair"></div>
+                        <div class="camera-readouts">
+                            <span class="readout-item">DIST: <strong id="camDistanceReadout">42 cm</strong></span>
+                            <span class="readout-item">PITCH: <strong id="camPitchReadout">+4.2°</strong></span>
+                            <span class="readout-item">TEMP: <strong id="camTempReadout">28.4°C</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="camera-controls-bar">
+                    <div class="cam-mode-buttons">
+                        <button class="hud-btn active" id="btnCamNormal">NORMAL</button>
+                        <button class="hud-btn" id="btnCamThermal">FLIR THERMAL</button>
+                        <button class="hud-btn" id="btnCamNV">NIGHT VISION</button>
+                    </div>
+
+                    <div class="slider-control-group">
+                        <label for="ledBrightnessSlider">LED HEADLIGHTS:</label>
+                        <input type="range" id="ledBrightnessSlider" min="0" max="100" value="85" class="hud-slider">
+                        <span class="slider-val" id="ledVal">85%</span>
+                    </div>
+
+                    <div class="cam-aux-controls">
+                        <button class="hud-btn btn-sm" id="btnStrobeToggle">STROBE: OFF</button>
+                        <button class="hud-btn btn-sm" id="btnSnapPhoto">📷 SNAPSHOT</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Robot Movement & Articulation -->
+        <section class="hud-panel panel-movement">
+            <div class="panel-header">
+                <h2><span class="icon">🕹️</span> MOVEMENT & 6-SEGMENT GAIT</h2>
+                <div class="panel-status-pill cyan">2 MOTORS / 6 JOINTS</div>
+            </div>
+            <div class="panel-body grid-2col">
+                <!-- Steering Pad & Gait Options -->
+                <div class="movement-left flex-col">
+                    <div class="dpad-container">
+                        <button class="dpad-btn btn-up" id="btnFwd" title="Forward (W)">▲<br>FWD</button>
+                        <button class="dpad-btn btn-left" id="btnLeft" title="Left (A)">◄<br>LEFT</button>
+                        <button class="dpad-btn btn-center" id="btnStop" title="Stop (Space)">STOP</button>
+                        <button class="dpad-btn btn-right" id="btnRight" title="Right (D)">►<br>RIGHT</button>
+                        <button class="dpad-btn btn-down" id="btnRev" title="Reverse (S)">▼<br>REV</button>
+                    </div>
+
+                    <div class="gait-selector">
+                        <label>UNDULATION GAIT:</label>
+                        <div class="btn-group-row">
+                            <button class="hud-btn active" id="btnGaitWave">SERPENTINE WAVE</button>
+                            <button class="hud-btn" id="btnGaitCreep">NARROW CREEP</button>
+                            <button class="hud-btn" id="btnGaitSide">SIDEWINDING</button>
+                        </div>
+                    </div>
+
+                    <div class="slider-control-group mt-2">
+                        <label for="speedSlider">MOTOR SPEED:</label>
+                        <input type="range" id="speedSlider" min="0" max="100" value="65" class="hud-slider">
+                        <span class="slider-val cyan" id="speedVal">65%</span>
+                    </div>
+                </div>
+
+                <!-- Segment Articulation Visualizer -->
+                <div class="movement-right flex-col">
+                    <div class="section-subheading">REAL-TIME SNAKE POSE & JOINT ANGLES</div>
+                    <div class="snake-pose-canvas-wrap">
+                        <canvas id="snakeCanvas" width="340" height="220"></canvas>
+                    </div>
+                    
+                    <!-- Motor Telemetry -->
+                    <div class="dual-motor-telemetry">
+                        <div class="motor-card">
+                            <div class="card-title">FRONT DRIVE MOTOR</div>
+                            <div class="metric-row"><span>RPM:</span> <strong id="m1Rpm">1,420</strong></div>
+                            <div class="metric-row"><span>CURRENT:</span> <strong id="m1Current" class="cyan">2.4 A</strong></div>
+                            <div class="metric-row"><span>TEMP:</span> <strong id="m1Temp">34.2 °C</strong></div>
+                        </div>
+
+                        <div class="motor-card">
+                            <div class="card-title">REAR DRIVE MOTOR</div>
+                            <div class="metric-row"><span>RPM:</span> <strong id="m2Rpm">1,415</strong></div>
+                            <div class="metric-row"><span>CURRENT:</span> <strong id="m2Current" class="cyan">2.3 A</strong></div>
+                            <div class="metric-row"><span>TEMP:</span> <strong id="m2Temp">35.1 °C</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Rescue Life Support System (Oxygen & Food) -->
+        <section class="hud-panel panel-life-support">
+            <div class="panel-header">
+                <h2><span class="icon">🛟</span> RESCUE LIFE SUPPORT SYSTEM</h2>
+                <div class="panel-status-pill green">FEED & GAS LINES ACTIVE</div>
+            </div>
+            <div class="panel-body grid-2col">
+                <!-- Oxygen System -->
+                <div class="sub-panel oxygen-panel">
+                    <div class="sub-header">
+                        <span class="dot-icon green"></span> OXYGEN SUPPLY SYSTEM
+                    </div>
+                    
+                    <div class="gauge-display-row">
+                        <div class="radial-gauge-box">
+                            <div class="gauge-value green" id="oxPressureVal">4.2</div>
+                            <div class="gauge-unit">BAR (60.9 PSI)</div>
+                            <div class="gauge-label">LINE PRESSURE</div>
+                        </div>
+                        <div class="radial-gauge-box">
+                            <div class="gauge-value cyan" id="oxFlowVal">5.0</div>
+                            <div class="gauge-unit">LITERS / MIN</div>
+                            <div class="gauge-label">OXYGEN FLOW</div>
+                        </div>
+                    </div>
+
+                    <div class="meter-bar-wrap mt-2">
+                        <div class="meter-label">
+                            <span>RESERVE CYLINDER SUPPLY</span>
+                            <span id="oxTankPct" class="green">88%</span>
+                        </div>
+                        <div class="hud-progress-bar">
+                            <div class="progress-fill green" id="oxTankFill" style="width: 88%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="controls-grid mt-2">
+                        <div class="toggle-switch-row">
+                            <span>MASTER O2 VALVE:</span>
+                            <button id="btnOxValve" class="hud-btn btn-toggle active">OPEN</button>
+                        </div>
+                        <div class="slider-control-group mt-1">
+                            <label for="oxFlowRegulator">TARGET FLOW:</label>
+                            <input type="range" id="oxFlowRegulator" min="0" max="10" step="0.5" value="5.0" class="hud-slider green-slider">
+                            <span class="slider-val green" id="oxRegVal">5.0 L/m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liquid Food System -->
+                <div class="sub-panel food-panel">
+                    <div class="sub-header">
+                        <span class="dot-icon gold"></span> LIQUID NUTRITION SYSTEM
+                    </div>
+
+                    <div class="gauge-display-row">
+                        <div class="radial-gauge-box">
+                            <div class="gauge-value gold" id="foodPressureVal">2.8</div>
+                            <div class="gauge-unit">BAR (40.6 PSI)</div>
+                            <div class="gauge-label">LINE PRESSURE</div>
+                        </div>
+                        <div class="radial-gauge-box">
+                            <div class="gauge-value gold" id="foodFlowVal">25</div>
+                            <div class="gauge-unit">ML / MIN</div>
+                            <div class="gauge-label">FOOD DOSAGE FLOW</div>
+                        </div>
+                    </div>
+
+                    <div class="meter-bar-wrap mt-2">
+                        <div class="meter-label">
+                            <span>LIQUID FOOD RESERVOIR</span>
+                            <span id="foodResPct" class="gold">75%</span>
+                        </div>
+                        <div class="hud-progress-bar">
+                            <div class="progress-fill gold" id="foodResFill" style="width: 75%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="controls-grid mt-2">
+                        <div class="toggle-switch-row">
+                            <span>FEED PUMP MODE:</span>
+                            <div class="btn-group-row">
+                                <button id="btnFoodOff" class="hud-btn">OFF</button>
+                                <button id="btnFoodLow" class="hud-btn active">SLOW</button>
+                                <button id="btnFoodHigh" class="hud-btn">PURGE</button>
+                            </div>
+                        </div>
+                        <div class="pump-diag-pill mt-2">
+                            <span>INTERIOR PUMP SYSTEM: <strong class="green" id="pumpStatusTxt">NORMAL (1,200 RPM)</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: Environmental & Navigation Sensors -->
+        <section class="hud-panel panel-sensors">
+            <div class="panel-header">
+                <h2><span class="icon">🌡️</span> HAZARD & SENSOR TELEMETRY</h2>
+                <div class="panel-status-pill cyan">REAL-TIME BUS ACTIVE</div>
+            </div>
+            <div class="panel-body grid-sensors">
+                <!-- Temperature -->
+                <div class="sensor-tile">
+                    <div class="tile-icon">🌡️</div>
+                    <div class="tile-data">
+                        <div class="tile-label">TEMPERATURE</div>
+                        <div class="tile-val" id="valTemp">26.8 <span class="unit">°C</span></div>
+                        <div class="tile-status green" id="statTemp">NORMAL</div>
+                    </div>
+                </div>
+
+                <!-- Humidity -->
+                <div class="sensor-tile">
+                    <div class="tile-icon">💧</div>
+                    <div class="tile-data">
+                        <div class="tile-label">HUMIDITY</div>
+                        <div class="tile-val" id="valHumidity">62 <span class="unit">%</span></div>
+                        <div class="tile-status green" id="statHumidity">OPTIMAL</div>
+                    </div>
+                </div>
+
+                <!-- Pressure -->
+                <div class="sensor-tile">
+                    <div class="tile-icon">⏲️</div>
+                    <div class="tile-data">
+                        <div class="tile-label">AMBIENT PRESSURE</div>
+                        <div class="tile-val" id="valPressure">101.3 <span class="unit">kPa</span></div>
+                        <div class="tile-status green">1.0 ATM</div>
+                    </div>
+                </div>
+
+                <!-- Toxic Gas / Smoke -->
+                <div class="sensor-tile hazard-tile" id="gasTile">
+                    <div class="tile-icon">☣️</div>
+                    <div class="tile-data">
+                        <div class="tile-label">CO / GAS SENSOR</div>
+                        <div class="tile-val hazard" id="valGas">14 <span class="unit">PPM</span></div>
+                        <div class="tile-status green" id="statGas">SAFE LEVEL</div>
+                    </div>
+                </div>
+
+                <!-- Obstacle Distance -->
+                <div class="sensor-tile">
+                    <div class="tile-icon">📡</div>
+                    <div class="tile-data">
+                        <div class="tile-label">LIDAR DISTANCE</div>
+                        <div class="tile-val cyan" id="valDistance">42 <span class="unit">cm</span></div>
+                        <div class="tile-status cyan">CLEAR PATH</div>
+                    </div>
+                </div>
+
+                <!-- Total Current & Power -->
+                <div class="sensor-tile">
+                    <div class="tile-icon">⚡</div>
+                    <div class="tile-data">
+                        <div class="tile-label">TOTAL POWER DRAW</div>
+                        <div class="tile-val gold" id="valPower">226.5 <span class="unit">W</span></div>
+                        <div class="tile-status gold" id="valCurrent">4.7 A @ 48.2V</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMU Artificial Horizon / Orientation visualizer -->
+            <div class="imu-sub-section mt-3">
+                <div class="sub-header">3D IMU ARTIFICIAL HORIZON & ATTITUDE</div>
+                <div class="imu-container">
+                    <div class="imu-canvas-wrap">
+                        <canvas id="imuCanvas" width="280" height="150"></canvas>
+                    </div>
+                    <div class="imu-readout-grid">
+                        <div class="imu-card">
+                            <span class="imu-lbl">PITCH</span>
+                            <span class="imu-val cyan" id="valPitch">+4.2°</span>
+                        </div>
+                        <div class="imu-card">
+                            <span class="imu-lbl">ROLL</span>
+                            <span class="imu-val green" id="valRoll">-1.8°</span>
+                        </div>
+                        <div class="imu-card">
+                            <span class="imu-lbl">YAW</span>
+                            <span class="imu-val gold" id="valYaw">184.5°</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: Interactive Structural Cutaway Blueprint -->
+        <section class="hud-panel panel-blueprint">
+            <div class="panel-header">
+                <h2><span class="icon">🔍</span> INTERACTIVE HARDWARE CUTAWAY SCHEMATIC</h2>
+                <div class="panel-status-pill gold">CLICK ANY MODULE FOR DIAGNOSTICS</div>
+            </div>
+            <div class="panel-body flex-col">
+                <!-- SVG Digital Twin Schematic of the Snake Robot -->
+                <div class="blueprint-svg-wrapper">
+                    <svg viewBox="0 0 1000 260" class="snake-blueprint-svg" id="snakeBlueprintSvg">
+                        <!-- Background Grid -->
+                        <defs>
+                            <pattern id="gridPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0, 240, 255, 0.05)" stroke-width="1"/>
+                            </pattern>
+                            <linearGradient id="oxygenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#10b981"/>
+                                <stop offset="100%" stop-color="#34d399"/>
+                            </linearGradient>
+                            <linearGradient id="foodGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#f59e0b"/>
+                                <stop offset="100%" stop-color="#fbbf24"/>
+                            </linearGradient>
+                        </defs>
+                        <rect width="1000" height="260" fill="url(#gridPattern)" rx="8" />
+
+                        <!-- Outer Snake Shell Outline -->
+                        <path d="M 50 70 L 910 70 A 35 35 0 0 1 945 105 L 945 155 A 35 35 0 0 1 910 190 L 50 190 A 25 25 0 0 1 25 165 L 25 95 A 25 25 0 0 1 50 70 Z" fill="#0f172a" stroke="#00f0ff" stroke-width="2.5" opacity="0.9" />
+
+                        <!-- 6 Joint Rings -->
+                        <line x1="180" y1="70" x2="180" y2="190" stroke="#334155" stroke-width="4" stroke-dasharray="6 4" />
+                        <line x1="330" y1="70" x2="330" y2="190" stroke="#334155" stroke-width="4" stroke-dasharray="6 4" />
+                        <line x1="480" y1="70" x2="480" y2="190" stroke="#334155" stroke-width="4" stroke-dasharray="6 4" />
+                        <line x1="630" y1="70" x2="630" y2="190" stroke="#334155" stroke-width="4" stroke-dasharray="6 4" />
+                        <line x1="780" y1="70" x2="780" y2="190" stroke="#334155" stroke-width="4" stroke-dasharray="6 4" />
+
+                        <!-- Internal Component Boxes -->
+                        
+                        <!-- 1. Front Camera & LED Array -->
+                        <g class="blueprint-module" id="modCamera" data-title="Camera & LED Illumination Head" data-desc="Front 1080p camera with surrounding multi-LED array. Provides vision feed, night-vision FX, and distance sensing telemetry.">
+                            <path d="M 28 95 L 60 90 L 60 170 L 28 165 Z" fill="#1e293b" stroke="#00f0ff" stroke-width="2"/>
+                            <circle cx="44" cy="115" r="8" fill="#00f0ff" />
+                            <circle cx="44" cy="145" r="8" fill="#00f0ff" />
+                            <text x="44" y="215" text-anchor="middle" fill="#00f0ff" class="bp-text">Camera & LEDs</text>
+                        </g>
+
+                        <!-- 2. Drive Motor 1 -->
+                        <g class="blueprint-module" id="modMotor1" data-title="Front Drive Motor & Planetary Gearbox" data-desc="High-torque 48V brushless DC motor with 50:1 planetary gearhead. Powers front 3 treaded segment joints.">
+                            <rect x="75" y="90" width="90" height="80" rx="4" fill="#334155" stroke="#a855f7" stroke-width="2"/>
+                            <rect x="90" y="105" width="60" height="50" rx="2" fill="#475569"/>
+                            <text x="120" y="215" text-anchor="middle" fill="#c084fc" class="bp-text">Drive Motor 1</text>
+                        </g>
+
+                        <!-- 3. Control Unit -->
+                        <g class="blueprint-module" id="modMCU" data-title="Central Control Unit & Microcontroller" data-desc="Dual ARM Cortex-M7 core system with dual CAN-bus transceivers, IMU sensors, and motor driver inverter bridges.">
+                            <rect x="200" y="95" width="110" height="70" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="2"/>
+                            <rect x="230" y="110" width="50" height="40" rx="2" fill="#047857"/>
+                            <circle cx="215" cy="105" r="3" fill="#34d399"/>
+                            <circle cx="295" cy="105" r="3" fill="#34d399"/>
+                            <text x="255" y="215" text-anchor="middle" fill="#34d399" class="bp-text">Control Unit</text>
+                        </g>
+
+                        <!-- 4. Pump System -->
+                        <g class="blueprint-module" id="modPump" data-title="Dual Fluid/Gas Pump System" data-desc="High-pressure micro-diaphragm pump unit for continuous oxygen regulation and micro-peristaltic pump for liquid nutrient delivery.">
+                            <rect x="350" y="95" width="110" height="70" rx="4" fill="#7f1d1d" stroke="#ef4444" stroke-width="2"/>
+                            <circle cx="385" cy="130" r="18" fill="#991b1b" stroke="#f87171" stroke-width="2"/>
+                            <circle cx="425" cy="130" r="18" fill="#991b1b" stroke="#f87171" stroke-width="2"/>
+                            <text x="405" y="215" text-anchor="middle" fill="#f87171" class="bp-text">Pump System</text>
+                        </g>
+
+                        <!-- 5. Internal Oxygen & Food Pipes -->
+                        <g class="blueprint-module" id="modPipes" data-title="Oxygen & Food Conduit Lines" data-desc="Dual internal high-pressure medical-grade silicone tubing running through joint hinges to external breather/nutrition ports.">
+                            <!-- Oxygen Pipe (Green) -->
+                            <path d="M 460 115 L 770 115" stroke="url(#oxygenGrad)" stroke-width="10" stroke-linecap="round"/>
+                            <!-- Food Pipe (Yellow) -->
+                            <path d="M 460 145 L 770 145" stroke="url(#foodGrad)" stroke-width="10" stroke-linecap="round"/>
+                            
+                            <!-- Outlet Ports -->
+                            <circle cx="530" cy="70" r="12" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+                            <path d="M 530 70 L 530 115" stroke="#10b981" stroke-width="4" stroke-dasharray="3 3"/>
+                            
+                            <circle cx="680" cy="70" r="12" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+                            <path d="M 680 70 L 680 145" stroke="#f59e0b" stroke-width="4" stroke-dasharray="3 3"/>
+
+                            <text x="530" y="42" text-anchor="middle" fill="#10b981" class="bp-text bold">O2 OUTLET</text>
+                            <text x="680" y="42" text-anchor="middle" fill="#f59e0b" class="bp-text bold">FOOD OUTLET</text>
+                            <text x="600" y="215" text-anchor="middle" fill="#fbbf24" class="bp-text">O2 & Food Lines</text>
+                        </g>
+
+                        <!-- 6. Drive Motor 2 -->
+                        <g class="blueprint-module" id="modMotor2" data-title="Rear Drive Motor & Gearbox" data-desc="Secondary 48V drive motor providing synchronized propulsion to rear 3 segments and umbilical strain relief.">
+                            <rect x="795" y="90" width="90" height="80" rx="4" fill="#334155" stroke="#a855f7" stroke-width="2"/>
+                            <rect x="810" y="105" width="60" height="50" rx="2" fill="#475569"/>
+                            <text x="840" y="215" text-anchor="middle" fill="#c084fc" class="bp-text">Drive Motor 2</text>
+                        </g>
+
+                        <!-- 7. Tether Cable Interface -->
+                        <g class="blueprint-module" id="modTether" data-title="Industrial Tether Umbilical" data-desc="Heavy-duty reinforced tether delivering 48V DC power, fiber-optic video data transmission, and gas/fluid intake feeds from command base.">
+                            <path d="M 910 130 L 985 130" stroke="#8b5cf6" stroke-width="16" stroke-linecap="round"/>
+                            <text x="945" y="215" text-anchor="middle" fill="#a78bfa" class="bp-text">Tether Cable</text>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Inspector Description Box -->
+                <div class="blueprint-inspector-card" id="bpInspectorCard">
+                    <div class="bp-card-header">
+                        <span class="bp-badge cyan">MODULE SELECTED</span>
+                        <h3 id="bpTitle">Click any component on the schematic above</h3>
+                    </div>
+                    <p id="bpDesc" class="bp-desc">Click on Camera, Motors, Control Unit, Pump System, Pipes, or Tether to view technical details, live diagnostics, and electrical telemetry.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Status & Keyboard Shortcuts Info -->
+    <footer class="hud-footer">
+        <div class="footer-left">
+            <span>OPERATOR CONTROLS: <strong>[W/A/S/D]</strong> Move &amp; Steer | <strong>[SPACE]</strong> Stop | <strong>[O]</strong> Toggle O2 Valve | <strong>[F]</strong> Toggle Food Pump | <strong>[ESC]</strong> E-Stop</span>
+        </div>
+        <div class="footer-right">
+            <span>SYSTEM LOGS: <strong class="green">ALL SYSTEMS NOMINAL</strong> | DISASTER RESCUE OPERATIONAL PROTOCOL ACTIVE</span>
+        </div>
+    </footer>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
